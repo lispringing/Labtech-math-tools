@@ -399,6 +399,17 @@ class MiniSignalTool:
     def _set_output(self, text):
         self.output.delete("1.0", "end")
         self.output.insert("1.0", text)
+        self._highlight_fill_lines()
+
+    def _highlight_fill_lines(self):
+        self.output.tag_remove("fill_red", "1.0", "end")
+        self.output.tag_configure("fill_red", foreground="red")
+
+        line_count = int(self.output.index("end-1c").split(".")[0])
+        for line_no in range(1, line_count + 1):
+            line_text = self.output.get(f"{line_no}.0", f"{line_no}.end")
+            if "(填)" in line_text or "（填）" in line_text:
+                self.output.tag_add("fill_red", f"{line_no}.0", f"{line_no}.end")
 
     def _mode_prev(self):
         idx = self.MODES.index(self.mode_var.get())
