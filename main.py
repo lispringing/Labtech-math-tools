@@ -134,7 +134,7 @@ def hamming_encode_8bit(info_code_8bit):
         "source": info_code_8bit,
         "high": high_result,
         "low": low_result,
-        "total": f"{high_result['full_code']} {low_result['full_code']}",
+        "total": f"{high_result['full_code']}{low_result['full_code']}",
     }
 
 
@@ -210,6 +210,87 @@ def qpsk_demodulate_batch(iq_data_str):
     return groups, full_original_stream
 
 
+def qam16_modulate(binary_code):
+    if len(binary_code) != 4 or not all(c in "01" for c in binary_code):
+        raise ValueError("请输入4位二进制（仅0和1）")
+
+    qam16_map = {
+        "0000": {"gray_code": "0000", "i_raw": 1, "q_raw": 1, "i_norm": 0.316, "q_norm": 0.316, "quadrant": "第一象限"},
+        "0001": {"gray_code": "0001", "i_raw": 1, "q_raw": 3, "i_norm": 0.316, "q_norm": 0.949, "quadrant": "第一象限"},
+        "0010": {"gray_code": "0011", "i_raw": 3, "q_raw": 1, "i_norm": 0.949, "q_norm": 0.316, "quadrant": "第一象限"},
+        "0011": {"gray_code": "0010", "i_raw": 3, "q_raw": 3, "i_norm": 0.949, "q_norm": 0.949, "quadrant": "第一象限"},
+        "0100": {"gray_code": "0110", "i_raw": 1, "q_raw": -1, "i_norm": 0.316, "q_norm": -0.316, "quadrant": "第四象限"},
+        "0101": {"gray_code": "0111", "i_raw": 1, "q_raw": -3, "i_norm": 0.316, "q_norm": -0.949, "quadrant": "第四象限"},
+        "0110": {"gray_code": "0101", "i_raw": 3, "q_raw": -1, "i_norm": 0.949, "q_norm": -0.316, "quadrant": "第四象限"},
+        "0111": {"gray_code": "0100", "i_raw": 3, "q_raw": -3, "i_norm": 0.949, "q_norm": -0.949, "quadrant": "第四象限"},
+        "1000": {"gray_code": "1100", "i_raw": -1, "q_raw": 1, "i_norm": -0.316, "q_norm": 0.316, "quadrant": "第二象限"},
+        "1001": {"gray_code": "1101", "i_raw": -1, "q_raw": 3, "i_norm": -0.316, "q_norm": 0.949, "quadrant": "第二象限"},
+        "1010": {"gray_code": "1111", "i_raw": -3, "q_raw": 1, "i_norm": -0.949, "q_norm": 0.316, "quadrant": "第二象限"},
+        "1011": {"gray_code": "1110", "i_raw": -3, "q_raw": 3, "i_norm": -0.949, "q_norm": 0.949, "quadrant": "第二象限"},
+        "1100": {"gray_code": "1010", "i_raw": -1, "q_raw": -1, "i_norm": -0.316, "q_norm": -0.316, "quadrant": "第三象限"},
+        "1101": {"gray_code": "1011", "i_raw": -1, "q_raw": -3, "i_norm": -0.316, "q_norm": -0.949, "quadrant": "第三象限"},
+        "1110": {"gray_code": "1001", "i_raw": -3, "q_raw": -1, "i_norm": -0.949, "q_norm": -0.316, "quadrant": "第三象限"},
+        "1111": {"gray_code": "1000", "i_raw": -3, "q_raw": -3, "i_norm": -0.949, "q_norm": -0.949, "quadrant": "第三象限"},
+    }
+    info = qam16_map[binary_code]
+    return {
+        "input": binary_code,
+        "gray": info["gray_code"],
+        "i_raw": info["i_raw"],
+        "q_raw": info["q_raw"],
+        "i_norm": info["i_norm"],
+        "q_norm": info["q_norm"],
+        "quadrant": info["quadrant"],
+    }
+
+
+def qam16_demodulate(i_input, q_input):
+    norm_to_raw = {0.316: 1, 0.949: 3, -0.316: -1, -0.949: -3}
+    standard_norms = list(norm_to_raw.keys())
+
+    def find_closest(value):
+        return min(standard_norms, key=lambda x: abs(x - value))
+
+    try:
+        i_norm = float(i_input)
+        q_norm = float(q_input)
+    except ValueError:
+        raise ValueError("请输入有效的数字作为IQ分量")
+
+    i_closest = find_closest(i_norm)
+    q_closest = find_closest(q_norm)
+    i_raw = norm_to_raw[i_closest]
+    q_raw = norm_to_raw[q_closest]
+
+    demap_table = {
+        (1, 1): {"gray_code": "0000", "original_code": "0000", "quadrant": "第一象限"},
+        (1, 3): {"gray_code": "0001", "original_code": "0001", "quadrant": "第一象限"},
+        (3, 1): {"gray_code": "0011", "original_code": "0010", "quadrant": "第一象限"},
+        (3, 3): {"gray_code": "0010", "original_code": "0011", "quadrant": "第一象限"},
+        (1, -1): {"gray_code": "0110", "original_code": "0100", "quadrant": "第四象限"},
+        (1, -3): {"gray_code": "0111", "original_code": "0101", "quadrant": "第四象限"},
+        (3, -1): {"gray_code": "0101", "original_code": "0110", "quadrant": "第四象限"},
+        (3, -3): {"gray_code": "0100", "original_code": "0111", "quadrant": "第四象限"},
+        (-1, 1): {"gray_code": "1100", "original_code": "1000", "quadrant": "第二象限"},
+        (-1, 3): {"gray_code": "1101", "original_code": "1001", "quadrant": "第二象限"},
+        (-3, 1): {"gray_code": "1111", "original_code": "1010", "quadrant": "第二象限"},
+        (-3, 3): {"gray_code": "1110", "original_code": "1011", "quadrant": "第二象限"},
+        (-1, -1): {"gray_code": "1010", "original_code": "1100", "quadrant": "第三象限"},
+        (-1, -3): {"gray_code": "1011", "original_code": "1101", "quadrant": "第三象限"},
+        (-3, -1): {"gray_code": "1001", "original_code": "1110", "quadrant": "第三象限"},
+        (-3, -3): {"gray_code": "1000", "original_code": "1111", "quadrant": "第三象限"},
+    }
+    info = demap_table[(i_raw, q_raw)]
+    return {
+        "input_iq": f"[{i_norm}, {q_norm}]",
+        "closest_iq": f"I: {i_closest}, Q: {q_closest}",
+        "raw_iq": f"{i_raw:+d}; {q_raw:+d}",
+        "gray": info["gray_code"],
+        "original": info["original_code"],
+        "quadrant": info["quadrant"],
+    }
+
+
 def hamming_decode(received_code):
     if len(received_code) != 7 or not all(c in "01" for c in received_code):
         raise ValueError("请输入7位二进制汉明码（仅0和1）")
@@ -256,6 +337,8 @@ class MiniSignalTool:
         "汉明编码1",
         "QPSK调制映射1",
         "QPSK解映射1",
+        "16QAM调制映射1",
+        "16QAM解映射1",
         "汉明译码1",
         "PCM译码1",
     ]
@@ -266,6 +349,8 @@ class MiniSignalTool:
         "汉明编码1": "输入8位二进制，例如: 10110011",
         "QPSK调制映射1": "输入2位二进制，例如: 10",
         "QPSK解映射1": "注意IQ值要空格分开 例:1 -1",
+        "16QAM调制映射1": "输入4位二进制，例如: 0110",
+        "16QAM解映射1": "输入归一化IQ，空格分隔，例如: 0.316 -0.949",
         "汉明译码1": "输入7位汉明码，例如: 1011001",
     }
 
@@ -507,6 +592,30 @@ class MiniSignalTool:
             lines.append(f"格雷译码(填): {full_stream}")
             lines.append("")
             return "\n".join(lines)
+        if mode == "16QAM调制映射1":
+            result = qam16_modulate(raw)
+            return (
+                f"输入原码: {result['input']}\n"
+                f"格雷编码(填): {result['gray']}\n"
+                f"IQ映射(填): {result['i_raw']} / {result['q_raw']}\n"
+                f"I归一化(填): {result['i_norm']}\n"
+                f"Q归一化(填): {result['q_norm']}\n"
+                f"IQ分组(填): [{result['i_norm']}, {result['q_norm']}]\n"
+                f"星座象限: {result['quadrant']}"
+            )
+        if mode == "16QAM解映射1":
+            parts = raw.split()
+            if len(parts) != 2:
+                raise ValueError("请输入两个由空格分隔的IQ值")
+            result = qam16_demodulate(parts[0], parts[1])
+            return (
+                f"输入IQ分组: {result['input_iq']}\n"
+                f"识别到标准电平: {result['closest_iq']}\n"
+                f"逆映射原始IQ电平: {result['raw_iq']}\n"
+                f"IQ解映射(填): {result['gray']}\n"
+                f"格雷译码(填): {result['original']}\n"
+                f"星座象限: {result['quadrant']}"
+            )
 
         result = hamming_decode(raw)
         return (
