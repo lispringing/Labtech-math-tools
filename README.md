@@ -11,6 +11,27 @@
 | source | 储存算法脚本 |
 | main.py | 主程序 |
 ## 打包exe
-pyinstaller -w -F -i favicon.ico main.py
-
+安装pip插件pyinstaller
+```
 pip install pyinstaller
+```
+打包成exe(关闭cmd窗口，设置favicon.ico为exe图标)
+```
+pyinstaller -w -F -i favicon.ico main.py
+```
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=lispringing%2FLabtech-math-tools&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=lispringing/Labtech-math-tools&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=lispringing/Labtech-math-tools&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=lispringing/Labtech-math-tools&type=date&legend=top-left" />
+ </picture>
+</a>
+
+## 赞助
+>如果觉着代码对你有帮助，可以赞赏一下开发者
+
+![截图](/source/reward.jpg)
+
